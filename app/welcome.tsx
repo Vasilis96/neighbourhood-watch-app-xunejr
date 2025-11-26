@@ -393,11 +393,10 @@ export default function WelcomeScreen() {
 
         {step === 'neighbourhood' && (
           <View style={styles.content}>
-            <IconSymbol
-              ios_icon_name="location.fill"
-              android_material_icon_name="location_on"
-              size={64}
-              color={colors.primary}
+            <Image
+              source={require('@/assets/images/cfd1c2fc-643d-41aa-9ff2-a94837287560.png')}
+              style={styles.neighbourhoodImage}
+              resizeMode="contain"
             />
             <Text style={styles.title}>Select Your Neighbourhood</Text>
             <Text style={styles.subtitle}>
@@ -536,6 +535,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   iconContainer: {
+    marginBottom: 24,
+  },
+  neighbourhoodImage: {
+    width: 80,
+    height: 80,
     marginBottom: 24,
   },
   title: {
