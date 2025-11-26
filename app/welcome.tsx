@@ -422,11 +422,10 @@ export default function WelcomeScreen() {
             </View>
 
             <TouchableOpacity style={styles.secondaryButton} onPress={handleUseCurrentLocation}>
-              <IconSymbol
-                ios_icon_name="location.fill"
-                android_material_icon_name="my_location"
-                size={20}
-                color={colors.primary}
+              <Image
+                source={require('@/assets/images/647e59b8-f9c8-4576-82e5-3a433dce369d.png')}
+                style={styles.locationIcon}
+                resizeMode="contain"
               />
               <Text style={styles.secondaryButtonText}>Use Current Location</Text>
             </TouchableOpacity>
@@ -611,6 +610,11 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: colors.primary,
     marginLeft: 8,
+  },
+  locationIcon: {
+    width: 20,
+    height: 20,
+    tintColor: colors.primary,
   },
   ssoButtons: {
     width: '100%',
