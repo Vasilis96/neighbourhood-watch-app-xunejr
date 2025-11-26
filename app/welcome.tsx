@@ -1,11 +1,12 @@
 
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, Platform, Alert, Image } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, Platform, Alert, Image, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { colors } from '@/styles/commonStyles';
 import { IconSymbol } from '@/components/IconSymbol';
 import { useGoogleAuth, simulateGoogleSignIn, GoogleUser } from '@/utils/googleAuth';
 import * as WebBrowser from 'expo-web-browser';
+import * as Location from 'expo-location';
 
 // Required for web to work properly
 WebBrowser.maybeCompleteAuthSession();
@@ -22,6 +23,7 @@ export default function WelcomeScreen() {
   const [name, setName] = useState('');
   const [neighbourhood, setNeighbourhood] = useState('');
   const [googleUser, setGoogleUser] = useState<GoogleUser | null>(null);
+  const [isLoadingLocation, setIsLoadingLocation] = useState(false);
 
   // Google Auth setup
   const { request, response, promptAsync, redirectUri } = useGoogleAuth();
@@ -168,13 +170,95 @@ export default function WelcomeScreen() {
     );
   };
 
-  const handleUseCurrentLocation = () => {
+  const handleUseCurrentLocation = async () => {
     console.log('Use Current Location pressed');
-    Alert.alert(
-      'Location Access',
-      'This feature would request your device location and automatically detect your neighbourhood.',
-      [{ text: 'OK' }]
-    );
+    setIsLoadingLocation(true);
+    
+    try {
+      // Request location permissions
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      
+      if (status !== 'granted') {
+        Alert.alert(
+          'Permission Denied',
+          'Location permission is required to automatically detect your neighbourhood. Please enable location access in your device settings.',
+          [{ text: 'OK' }]
+        );
+        setIsLoadingLocation(false);
+        return;
+      }
+
+      // Get current position
+      console.log('Getting current position...');
+      const location = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      });
+      
+      console.log('Location obtained:', location.coords);
+
+      // Reverse geocode to get address
+      const addresses = await Location.reverseGeocodeAsync({
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
+      });
+
+      console.log('Addresses:', addresses);
+
+      if (addresses && addresses.length > 0) {
+        const address = addresses[0];
+        
+        // Build neighbourhood string from available address components
+        let neighbourhoodName = '';
+        
+        if (address.district) {
+          neighbourhoodName = address.district;
+        } else if (address.subregion) {
+          neighbourhoodName = address.subregion;
+        } else if (address.city) {
+          neighbourhoodName = address.city;
+        } else if (address.region) {
+          neighbourhoodName = address.region;
+        }
+
+        // Add city if we have a district/subregion
+        if (address.city && neighbourhoodName && neighbourhoodName !== address.city) {
+          neighbourhoodName += `, ${address.city}`;
+        }
+
+        if (neighbourhoodName) {
+          setNeighbourhood(neighbourhoodName);
+          Alert.alert(
+            'Location Found',
+            `Your neighbourhood has been set to: ${neighbourhoodName}`,
+            [{ text: 'OK' }]
+          );
+        } else {
+          // Fallback to coordinates if no neighbourhood name found
+          const fallbackName = `${address.city || address.region || 'Unknown Area'}`;
+          setNeighbourhood(fallbackName);
+          Alert.alert(
+            'Location Found',
+            `Your location has been set to: ${fallbackName}. You can edit this if needed.`,
+            [{ text: 'OK' }]
+          );
+        }
+      } else {
+        Alert.alert(
+          'Location Found',
+          'We found your location but couldn\'t determine the neighbourhood name. Please enter it manually.',
+          [{ text: 'OK' }]
+        );
+      }
+    } catch (error) {
+      console.error('Location error:', error);
+      Alert.alert(
+        'Location Error',
+        'Unable to get your current location. Please make sure location services are enabled and try again, or enter your neighbourhood manually.',
+        [{ text: 'OK' }]
+      );
+    } finally {
+      setIsLoadingLocation(false);
+    }
   };
 
   return (
@@ -421,13 +505,23 @@ export default function WelcomeScreen() {
               />
             </View>
 
-            <TouchableOpacity style={styles.secondaryButton} onPress={handleUseCurrentLocation}>
-              <Image
-                source={require('@/assets/images/647e59b8-f9c8-4576-82e5-3a433dce369d.png')}
-                style={styles.locationIcon}
-                resizeMode="contain"
-              />
-              <Text style={styles.secondaryButtonText}>Use Current Location</Text>
+            <TouchableOpacity 
+              style={[styles.secondaryButton, isLoadingLocation && styles.secondaryButtonDisabled]} 
+              onPress={handleUseCurrentLocation}
+              disabled={isLoadingLocation}
+            >
+              {isLoadingLocation ? (
+                <ActivityIndicator size="small" color={colors.primary} />
+              ) : (
+                <Image
+                  source={require('@/assets/images/647e59b8-f9c8-4576-82e5-3a433dce369d.png')}
+                  style={styles.locationIcon}
+                  resizeMode="contain"
+                />
+              )}
+              <Text style={styles.secondaryButtonText}>
+                {isLoadingLocation ? 'Getting Location...' : 'Use Current Location'}
+              </Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.primaryButton} onPress={handleContinue}>
@@ -604,6 +698,9 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: colors.primary,
     marginBottom: 8,
+  },
+  secondaryButtonDisabled: {
+    opacity: 0.6,
   },
   secondaryButtonText: {
     fontSize: 16,
