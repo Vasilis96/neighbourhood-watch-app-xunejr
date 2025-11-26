@@ -214,11 +214,10 @@ export default function WelcomeScreen() {
               </View>
 
               <View style={styles.feature}>
-                <IconSymbol
-                  ios_icon_name="location.fill"
-                  android_material_icon_name="my_location"
-                  size={32}
-                  color={colors.accent}
+                <Image
+                  source={require('@/assets/images/a0cdda9f-dbf1-4abd-bc5a-b217d554ad1f.png')}
+                  style={styles.featureImage}
+                  resizeMode="contain"
                 />
                 <Text style={styles.featureTitle}>Safety Tracking</Text>
                 <Text style={styles.featureText}>
@@ -551,6 +550,10 @@ const styles = StyleSheet.create({
   feature: {
     alignItems: 'center',
     marginBottom: 24,
+  },
+  featureImage: {
+    width: 48,
+    height: 48,
   },
   featureTitle: {
     fontSize: 18,
