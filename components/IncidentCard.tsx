@@ -24,6 +24,13 @@ export function IncidentCard({ incident, onPress }: IncidentCardProps) {
     return icons[category] || 'info';
   };
 
+  const getCategoryImage = (category: string) => {
+    if (category === 'theft') {
+      return require('@/assets/images/7bacf5e5-45f8-4dcf-aa5e-2e631be80713.png');
+    }
+    return null;
+  };
+
   const getSeverityColor = (severity: string) => {
     const severityColors: Record<string, string> = {
       low: colors.success,
@@ -47,6 +54,8 @@ export function IncidentCard({ incident, onPress }: IncidentCardProps) {
     if (diffHours < 24) return `${diffHours}h ago`;
     return `${diffDays}d ago`;
   };
+
+  const categoryImage = getCategoryImage(incident.category);
 
   return (
     <TouchableOpacity
@@ -80,12 +89,19 @@ export function IncidentCard({ incident, onPress }: IncidentCardProps) {
 
       <View style={styles.content}>
         <View style={styles.categoryRow}>
-          <IconSymbol
-            ios_icon_name={getCategoryIcon(incident.category)}
-            android_material_icon_name={getCategoryIcon(incident.category)}
-            size={20}
-            color={colors.primary}
-          />
+          {categoryImage ? (
+            <Image
+              source={categoryImage}
+              style={[styles.categoryImage, { tintColor: colors.primary }]}
+            />
+          ) : (
+            <IconSymbol
+              ios_icon_name={getCategoryIcon(incident.category)}
+              android_material_icon_name={getCategoryIcon(incident.category)}
+              size={20}
+              color={colors.primary}
+            />
+          )}
           <Text style={styles.category}>{incident.category.toUpperCase()}</Text>
         </View>
         <Text style={styles.title}>{incident.title}</Text>
@@ -194,6 +210,11 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: colors.primary,
     marginLeft: 6,
+  },
+  categoryImage: {
+    width: 20,
+    height: 20,
+    resizeMode: 'contain',
   },
   title: {
     fontSize: 16,

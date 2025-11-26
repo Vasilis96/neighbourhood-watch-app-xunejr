@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Platform, Image } from 'react-native';
 import { colors } from '@/styles/commonStyles';
 import { IconSymbol } from '@/components/IconSymbol';
 import { IncidentCard } from '@/components/IncidentCard';
@@ -14,7 +14,7 @@ export default function HomeScreen() {
 
   const categories = [
     { id: 'all', label: 'All', icon: 'apps' },
-    { id: 'theft', label: 'Theft', icon: 'shopping_bag' },
+    { id: 'theft', label: 'Theft', icon: 'shopping_bag', customImage: require('@/assets/images/7bacf5e5-45f8-4dcf-aa5e-2e631be80713.png') },
     { id: 'suspicious', label: 'Suspicious', icon: 'visibility' },
     { id: 'accident', label: 'Accident', icon: 'car_crash' },
     { id: 'fire', label: 'Fire', icon: 'local_fire_department' },
@@ -82,16 +82,30 @@ export default function HomeScreen() {
                   ]}
                   onPress={() => setSelectedCategory(category.id === 'all' ? null : category.id)}
                 >
-                  <IconSymbol
-                    ios_icon_name={category.icon}
-                    android_material_icon_name={category.icon}
-                    size={16}
-                    color={
-                      selectedCategory === category.id || (!selectedCategory && category.id === 'all')
-                        ? colors.card
-                        : colors.text
-                    }
-                  />
+                  {category.customImage ? (
+                    <Image
+                      source={category.customImage}
+                      style={[
+                        styles.categoryImage,
+                        {
+                          tintColor: selectedCategory === category.id || (!selectedCategory && category.id === 'all')
+                            ? colors.card
+                            : colors.text
+                        }
+                      ]}
+                    />
+                  ) : (
+                    <IconSymbol
+                      ios_icon_name={category.icon}
+                      android_material_icon_name={category.icon}
+                      size={16}
+                      color={
+                        selectedCategory === category.id || (!selectedCategory && category.id === 'all')
+                          ? colors.card
+                          : colors.text
+                      }
+                    />
+                  )}
                   <Text
                     style={[
                       styles.filterChipText,
@@ -288,6 +302,11 @@ const styles = StyleSheet.create({
   },
   filterChipTextActive: {
     color: colors.card,
+  },
+  categoryImage: {
+    width: 16,
+    height: 16,
+    resizeMode: 'contain',
   },
   severityDot: {
     width: 8,
