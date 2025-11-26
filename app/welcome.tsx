@@ -60,6 +60,16 @@ export default function WelcomeScreen() {
     }
   }, [response]);
 
+  const handleBack = () => {
+    if (step === 'signup') {
+      setStep('welcome');
+    } else if (step === 'neighbourhood') {
+      setStep('signup');
+    } else if (step === 'profile') {
+      setStep('neighbourhood');
+    }
+  };
+
   const handleContinue = () => {
     if (step === 'welcome') {
       setStep('signup');
@@ -160,6 +170,18 @@ export default function WelcomeScreen() {
 
   return (
     <View style={styles.container}>
+      {step !== 'welcome' && (
+        <TouchableOpacity style={styles.backButton} onPress={handleBack}>
+          <IconSymbol
+            ios_icon_name="chevron.left"
+            android_material_icon_name="arrow_back"
+            size={24}
+            color={colors.text}
+          />
+          <Text style={styles.backButtonText}>Back</Text>
+        </TouchableOpacity>
+      )}
+      
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -481,6 +503,26 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  backButton: {
+    position: 'absolute',
+    top: Platform.OS === 'android' ? 48 : 60,
+    left: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    zIndex: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    backgroundColor: colors.card,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  backButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.text,
+    marginLeft: 4,
   },
   scrollContent: {
     flexGrow: 1,
