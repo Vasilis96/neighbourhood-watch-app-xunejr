@@ -168,6 +168,15 @@ export default function WelcomeScreen() {
     );
   };
 
+  const handleUseCurrentLocation = () => {
+    console.log('Use Current Location pressed');
+    Alert.alert(
+      'Location Access',
+      'This feature would request your device location and automatically detect your neighbourhood.',
+      [{ text: 'OK' }]
+    );
+  };
+
   return (
     <View style={styles.container}>
       {step !== 'welcome' && (
@@ -413,7 +422,7 @@ export default function WelcomeScreen() {
               />
             </View>
 
-            <TouchableOpacity style={styles.secondaryButton}>
+            <TouchableOpacity style={styles.secondaryButton} onPress={handleUseCurrentLocation}>
               <IconSymbol
                 ios_icon_name="location.fill"
                 android_material_icon_name="my_location"
