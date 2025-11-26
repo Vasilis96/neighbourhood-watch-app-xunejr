@@ -1,0 +1,545 @@
+
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, Platform, Alert } from 'react-native';
+import { useRouter } from 'expo-router';
+import { colors } from '@/styles/commonStyles';
+import { IconSymbol } from '@/components/IconSymbol';
+
+type OnboardingStep = 'welcome' | 'signup' | 'neighbourhood' | 'profile';
+
+export default function WelcomeScreen() {
+  const router = useRouter();
+  const [step, setStep] = useState<OnboardingStep>('welcome');
+  const [signupMethod, setSignupMethod] = useState<'phone' | 'email' | null>(null);
+  const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
+  const [neighbourhood, setNeighbourhood] = useState('');
+
+  const handleContinue = () => {
+    if (step === 'welcome') {
+      setStep('signup');
+    } else if (step === 'signup') {
+      if (!signupMethod) {
+        Alert.alert('Please select a signup method');
+        return;
+      }
+      if (signupMethod === 'email' && (!email || !password)) {
+        Alert.alert('Please enter email and password');
+        return;
+      }
+      if (signupMethod === 'phone' && !phone) {
+        Alert.alert('Please enter phone number');
+        return;
+      }
+      setStep('neighbourhood');
+    } else if (step === 'neighbourhood') {
+      if (!neighbourhood) {
+        Alert.alert('Please enter your neighbourhood');
+        return;
+      }
+      setStep('profile');
+    } else if (step === 'profile') {
+      if (!name) {
+        Alert.alert('Please enter your name');
+        return;
+      }
+      router.replace('/(tabs)/(home)/');
+    }
+  };
+
+  const handleSSOSignup = (provider: 'google' | 'apple') => {
+    console.log(`Signing up with ${provider}`);
+    Alert.alert('SSO Signup', `In a real app, this would sign you up with ${provider}`, [
+      { text: 'OK', onPress: () => router.replace('/(tabs)/(home)/') }
+    ]);
+  };
+
+  return (
+    <View style={styles.container}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {step === 'welcome' && (
+          <View style={styles.content}>
+            <View style={styles.iconContainer}>
+              <IconSymbol
+                ios_icon_name="shield.fill"
+                android_material_icon_name="shield"
+                size={80}
+                color={colors.primary}
+              />
+            </View>
+            <Text style={styles.title}>Welcome to SafeNeighbor</Text>
+            <Text style={styles.subtitle}>
+              Building safer, stronger communities together
+            </Text>
+
+            <View style={styles.featuresContainer}>
+              <View style={styles.feature}>
+                <IconSymbol
+                  ios_icon_name="exclamationmark.triangle.fill"
+                  android_material_icon_name="warning"
+                  size={32}
+                  color={colors.error}
+                />
+                <Text style={styles.featureTitle}>Real-time Alerts</Text>
+                <Text style={styles.featureText}>
+                  Stay informed about incidents in your area
+                </Text>
+              </View>
+
+              <View style={styles.feature}>
+                <IconSymbol
+                  ios_icon_name="location.fill"
+                  android_material_icon_name="my_location"
+                  size={32}
+                  color={colors.accent}
+                />
+                <Text style={styles.featureTitle}>Safety Tracking</Text>
+                <Text style={styles.featureText}>
+                  Let friends know you&apos;re safe on your journey
+                </Text>
+              </View>
+
+              <View style={styles.feature}>
+                <IconSymbol
+                  ios_icon_name="person.2.fill"
+                  android_material_icon_name="people"
+                  size={32}
+                  color={colors.secondary}
+                />
+                <Text style={styles.featureTitle}>Community</Text>
+                <Text style={styles.featureText}>
+                  Connect with neighbors and build relationships
+                </Text>
+              </View>
+            </View>
+
+            <TouchableOpacity style={styles.primaryButton} onPress={handleContinue}>
+              <Text style={styles.primaryButtonText}>Get Started</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {step === 'signup' && (
+          <View style={styles.content}>
+            <Text style={styles.title}>Create Account</Text>
+            <Text style={styles.subtitle}>Choose how you&apos;d like to sign up</Text>
+
+            <View style={styles.ssoButtons}>
+              <TouchableOpacity
+                style={styles.ssoButton}
+                onPress={() => handleSSOSignup('google')}
+              >
+                <IconSymbol
+                  ios_icon_name="g.circle.fill"
+                  android_material_icon_name="login"
+                  size={24}
+                  color={colors.text}
+                />
+                <Text style={styles.ssoButtonText}>Continue with Google</Text>
+              </TouchableOpacity>
+
+              {Platform.OS === 'ios' && (
+                <TouchableOpacity
+                  style={[styles.ssoButton, styles.appleButton]}
+                  onPress={() => handleSSOSignup('apple')}
+                >
+                  <IconSymbol
+                    ios_icon_name="apple.logo"
+                    android_material_icon_name="login"
+                    size={24}
+                    color={colors.card}
+                  />
+                  <Text style={[styles.ssoButtonText, styles.appleButtonText]}>
+                    Continue with Apple
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
+
+            <View style={styles.divider}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>or</Text>
+              <View style={styles.dividerLine} />
+            </View>
+
+            <View style={styles.methodButtons}>
+              <TouchableOpacity
+                style={[
+                  styles.methodButton,
+                  signupMethod === 'email' && styles.methodButtonActive,
+                ]}
+                onPress={() => setSignupMethod('email')}
+              >
+                <IconSymbol
+                  ios_icon_name="envelope.fill"
+                  android_material_icon_name="email"
+                  size={24}
+                  color={signupMethod === 'email' ? colors.card : colors.primary}
+                />
+                <Text
+                  style={[
+                    styles.methodButtonText,
+                    signupMethod === 'email' && styles.methodButtonTextActive,
+                  ]}
+                >
+                  Email
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.methodButton,
+                  signupMethod === 'phone' && styles.methodButtonActive,
+                ]}
+                onPress={() => setSignupMethod('phone')}
+              >
+                <IconSymbol
+                  ios_icon_name="phone.fill"
+                  android_material_icon_name="phone"
+                  size={24}
+                  color={signupMethod === 'phone' ? colors.card : colors.primary}
+                />
+                <Text
+                  style={[
+                    styles.methodButtonText,
+                    signupMethod === 'phone' && styles.methodButtonTextActive,
+                  ]}
+                >
+                  Phone
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {signupMethod === 'email' && (
+              <View style={styles.inputContainer}>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Email address"
+                  placeholderTextColor={colors.textSecondary}
+                  value={email}
+                  onChangeText={setEmail}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Password"
+                  placeholderTextColor={colors.textSecondary}
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry
+                />
+              </View>
+            )}
+
+            {signupMethod === 'phone' && (
+              <View style={styles.inputContainer}>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Phone number"
+                  placeholderTextColor={colors.textSecondary}
+                  value={phone}
+                  onChangeText={setPhone}
+                  keyboardType="phone-pad"
+                />
+              </View>
+            )}
+
+            {signupMethod && (
+              <TouchableOpacity style={styles.primaryButton} onPress={handleContinue}>
+                <Text style={styles.primaryButtonText}>Continue</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
+
+        {step === 'neighbourhood' && (
+          <View style={styles.content}>
+            <IconSymbol
+              ios_icon_name="location.fill"
+              android_material_icon_name="location_on"
+              size={64}
+              color={colors.primary}
+            />
+            <Text style={styles.title}>Select Your Neighbourhood</Text>
+            <Text style={styles.subtitle}>
+              This helps us show you relevant local information
+            </Text>
+
+            <View style={styles.inputContainer}>
+              <TextInput
+                style={styles.input}
+                placeholder="Enter your neighbourhood"
+                placeholderTextColor={colors.textSecondary}
+                value={neighbourhood}
+                onChangeText={setNeighbourhood}
+              />
+            </View>
+
+            <TouchableOpacity style={styles.secondaryButton}>
+              <IconSymbol
+                ios_icon_name="location.fill"
+                android_material_icon_name="my_location"
+                size={20}
+                color={colors.primary}
+              />
+              <Text style={styles.secondaryButtonText}>Use Current Location</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.primaryButton} onPress={handleContinue}>
+              <Text style={styles.primaryButtonText}>Continue</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {step === 'profile' && (
+          <View style={styles.content}>
+            <IconSymbol
+              ios_icon_name="person.fill"
+              android_material_icon_name="person"
+              size={64}
+              color={colors.primary}
+            />
+            <Text style={styles.title}>Complete Your Profile</Text>
+            <Text style={styles.subtitle}>
+              Help your neighbors get to know you
+            </Text>
+
+            <View style={styles.inputContainer}>
+              <TextInput
+                style={styles.input}
+                placeholder="Full name"
+                placeholderTextColor={colors.textSecondary}
+                value={name}
+                onChangeText={setName}
+              />
+            </View>
+
+            <View style={styles.checkboxContainer}>
+              <TouchableOpacity style={styles.checkbox}>
+                <IconSymbol
+                  ios_icon_name="checkmark.square.fill"
+                  android_material_icon_name="check_box"
+                  size={24}
+                  color={colors.primary}
+                />
+                <Text style={styles.checkboxText}>
+                  Enable 2-Factor Authentication (recommended)
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.checkbox}>
+                <IconSymbol
+                  ios_icon_name="checkmark.square.fill"
+                  android_material_icon_name="check_box"
+                  size={24}
+                  color={colors.primary}
+                />
+                <Text style={styles.checkboxText}>
+                  Show my profile in neighbor directory
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            <TouchableOpacity style={styles.primaryButton} onPress={handleContinue}>
+              <Text style={styles.primaryButtonText}>Complete Setup</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </ScrollView>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    paddingTop: Platform.OS === 'android' ? 48 : 60,
+    paddingHorizontal: 24,
+    paddingBottom: 40,
+  },
+  content: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  iconContainer: {
+    marginBottom: 24,
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: colors.text,
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  subtitle: {
+    fontSize: 16,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginBottom: 32,
+    lineHeight: 24,
+  },
+  featuresContainer: {
+    width: '100%',
+    marginBottom: 32,
+  },
+  feature: {
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  featureTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.text,
+    marginTop: 12,
+    marginBottom: 6,
+  },
+  featureText: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  primaryButton: {
+    width: '100%',
+    backgroundColor: colors.primary,
+    borderRadius: 12,
+    paddingVertical: 16,
+    alignItems: 'center',
+    marginTop: 16,
+  },
+  primaryButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.card,
+  },
+  secondaryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+    backgroundColor: colors.card,
+    borderRadius: 12,
+    paddingVertical: 16,
+    borderWidth: 2,
+    borderColor: colors.primary,
+    marginBottom: 8,
+  },
+  secondaryButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.primary,
+    marginLeft: 8,
+  },
+  ssoButtons: {
+    width: '100%',
+    marginBottom: 24,
+  },
+  ssoButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.card,
+    borderRadius: 12,
+    paddingVertical: 14,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  ssoButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.text,
+    marginLeft: 12,
+  },
+  appleButton: {
+    backgroundColor: colors.text,
+  },
+  appleButtonText: {
+    color: colors.card,
+  },
+  divider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: '100%',
+    marginBottom: 24,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: colors.border,
+  },
+  dividerText: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    marginHorizontal: 16,
+  },
+  methodButtons: {
+    flexDirection: 'row',
+    width: '100%',
+    marginBottom: 24,
+    gap: 12,
+  },
+  methodButton: {
+    flex: 1,
+    alignItems: 'center',
+    backgroundColor: colors.card,
+    borderRadius: 12,
+    paddingVertical: 20,
+    borderWidth: 2,
+    borderColor: colors.border,
+  },
+  methodButtonActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  methodButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.primary,
+    marginTop: 8,
+  },
+  methodButtonTextActive: {
+    color: colors.card,
+  },
+  inputContainer: {
+    width: '100%',
+    marginBottom: 16,
+  },
+  input: {
+    width: '100%',
+    backgroundColor: colors.card,
+    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    fontSize: 16,
+    color: colors.text,
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginBottom: 12,
+  },
+  checkboxContainer: {
+    width: '100%',
+    marginBottom: 24,
+  },
+  checkbox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  checkboxText: {
+    fontSize: 14,
+    color: colors.text,
+    marginLeft: 12,
+    flex: 1,
+  },
+});
