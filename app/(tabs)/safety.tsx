@@ -1,27 +1,237 @@
 
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Platform, Alert } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Platform, Alert, Animated } from 'react-native';
 import { colors } from '@/styles/commonStyles';
 import { IconSymbol } from '@/components/IconSymbol';
-import { mockSafetyTracking } from '@/data/mockData';
+import { mockSafetyTracking, mockEmergencyContacts } from '@/data/mockData';
+import * as Location from 'expo-location';
+
+interface ActiveJourney {
+  destination: string;
+  estimatedMinutes: number;
+  startTime: Date;
+  startLocation: Location.LocationObject | null;
+  currentLocation: Location.LocationObject | null;
+  trustedContacts: string[];
+}
 
 export default function SafetyTrackingScreen() {
   const [isTracking, setIsTracking] = useState(false);
   const [destination, setDestination] = useState('');
   const [estimatedTime, setEstimatedTime] = useState('');
+  const [activeJourney, setActiveJourney] = useState<ActiveJourney | null>(null);
+  const [elapsedTime, setElapsedTime] = useState(0);
+  const [isDelayed, setIsDelayed] = useState(false);
+  const [locationPermission, setLocationPermission] = useState<Location.PermissionStatus | null>(null);
+  
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const locationSubscription = useRef<Location.LocationSubscription | null>(null);
 
-  const startTracking = () => {
-    if (!destination || !estimatedTime) {
-      Alert.alert('Missing Information', 'Please enter destination and estimated arrival time');
+  // Request location permissions on mount
+  useEffect(() => {
+    (async () => {
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        setLocationPermission(status);
+        console.log('Location permission status:', status);
+      } catch (error) {
+        console.error('Error requesting location permission:', error);
+      }
+    })();
+  }, []);
+
+  // Pulse animation for active tracking
+  useEffect(() => {
+    if (isTracking) {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, {
+            toValue: 1.2,
+            duration: 1000,
+            useNativeDriver: true,
+          }),
+          Animated.timing(pulseAnim, {
+            toValue: 1,
+            duration: 1000,
+            useNativeDriver: true,
+          }),
+        ])
+      ).start();
+    } else {
+      pulseAnim.setValue(1);
+    }
+  }, [isTracking]);
+
+  // Timer for elapsed time and delay detection
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    
+    if (isTracking && activeJourney) {
+      interval = setInterval(() => {
+        const elapsed = Math.floor((Date.now() - activeJourney.startTime.getTime()) / 1000);
+        setElapsedTime(elapsed);
+        
+        // Check if journey is delayed (exceeded estimated time by 5 minutes)
+        const estimatedSeconds = activeJourney.estimatedMinutes * 60;
+        const delayThreshold = estimatedSeconds + (5 * 60); // 5 minutes grace period
+        
+        if (elapsed > delayThreshold && !isDelayed) {
+          setIsDelayed(true);
+          handleDelayDetected();
+        }
+      }, 1000);
+    }
+    
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [isTracking, activeJourney, isDelayed]);
+
+  // Location tracking during journey
+  useEffect(() => {
+    if (isTracking && locationPermission === Location.PermissionStatus.GRANTED) {
+      startLocationTracking();
+    } else {
+      stopLocationTracking();
+    }
+    
+    return () => {
+      stopLocationTracking();
+    };
+  }, [isTracking, locationPermission]);
+
+  const startLocationTracking = async () => {
+    try {
+      console.log('Starting location tracking...');
+      locationSubscription.current = await Location.watchPositionAsync(
+        {
+          accuracy: Location.Accuracy.High,
+          timeInterval: 10000, // Update every 10 seconds
+          distanceInterval: 50, // Or every 50 meters
+        },
+        (location) => {
+          console.log('Location update:', location.coords);
+          setActiveJourney(prev => prev ? { ...prev, currentLocation: location } : null);
+        }
+      );
+    } catch (error) {
+      console.error('Error starting location tracking:', error);
+    }
+  };
+
+  const stopLocationTracking = () => {
+    if (locationSubscription.current) {
+      console.log('Stopping location tracking...');
+      locationSubscription.current.remove();
+      locationSubscription.current = null;
+    }
+  };
+
+  const handleDelayDetected = () => {
+    console.log('Delay detected! Alerting trusted contacts...');
+    Alert.alert(
+      'Delay Detected',
+      'You haven\'t arrived at your destination on time. Your trusted contacts have been notified of your last known location.',
+      [
+        {
+          text: 'I\'m OK',
+          onPress: () => {
+            console.log('User confirmed they are OK');
+            setIsDelayed(false);
+          },
+        },
+        {
+          text: 'Need Help',
+          style: 'destructive',
+          onPress: () => {
+            console.log('User needs help!');
+            Alert.alert('Emergency Alert', 'Emergency services and all trusted contacts have been notified!');
+          },
+        },
+      ]
+    );
+  };
+
+  const startTracking = async () => {
+    if (!destination.trim()) {
+      Alert.alert('Missing Information', 'Please enter a destination');
       return;
     }
 
-    setIsTracking(true);
-    Alert.alert(
-      'Safety Tracking Started',
-      'Your trusted contacts have been notified and will be alerted if you don\'t arrive on time.',
-      [{ text: 'OK' }]
-    );
+    if (!estimatedTime.trim()) {
+      Alert.alert('Missing Information', 'Please enter estimated arrival time');
+      return;
+    }
+
+    // Parse estimated time (expecting format like "30" or "30 minutes")
+    const timeMatch = estimatedTime.match(/(\d+)/);
+    if (!timeMatch) {
+      Alert.alert('Invalid Time', 'Please enter time in minutes (e.g., "30")');
+      return;
+    }
+
+    const minutes = parseInt(timeMatch[1]);
+    if (minutes <= 0 || minutes > 300) {
+      Alert.alert('Invalid Time', 'Please enter a time between 1 and 300 minutes');
+      return;
+    }
+
+    // Check location permission
+    if (locationPermission !== Location.PermissionStatus.GRANTED) {
+      Alert.alert(
+        'Location Permission Required',
+        'Safety tracking requires location access to monitor your journey.',
+        [
+          {
+            text: 'Cancel',
+            style: 'cancel',
+          },
+          {
+            text: 'Grant Permission',
+            onPress: async () => {
+              const { status } = await Location.requestForegroundPermissionsAsync();
+              setLocationPermission(status);
+              if (status === Location.PermissionStatus.GRANTED) {
+                startTracking();
+              }
+            },
+          },
+        ]
+      );
+      return;
+    }
+
+    try {
+      // Get current location
+      const location = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.High,
+      });
+
+      console.log('Starting journey from:', location.coords);
+
+      const journey: ActiveJourney = {
+        destination: destination.trim(),
+        estimatedMinutes: minutes,
+        startTime: new Date(),
+        startLocation: location,
+        currentLocation: location,
+        trustedContacts: mockEmergencyContacts.slice(1, 4).map(c => c.name), // Use mock contacts
+      };
+
+      setActiveJourney(journey);
+      setIsTracking(true);
+      setElapsedTime(0);
+      setIsDelayed(false);
+
+      Alert.alert(
+        'Safety Tracking Started',
+        `Your trusted contacts have been notified. They will be alerted if you don't arrive within ${minutes} minutes.`,
+        [{ text: 'OK' }]
+      );
+    } catch (error) {
+      console.error('Error starting tracking:', error);
+      Alert.alert('Error', 'Failed to get your current location. Please try again.');
+    }
   };
 
   const stopTracking = () => {
@@ -36,14 +246,24 @@ export default function SafetyTrackingScreen() {
         {
           text: 'Yes, I\'m Safe',
           onPress: () => {
+            console.log('Journey completed successfully');
             setIsTracking(false);
+            setActiveJourney(null);
             setDestination('');
             setEstimatedTime('');
+            setElapsedTime(0);
+            setIsDelayed(false);
             Alert.alert('Great!', 'Your contacts have been notified of your safe arrival.');
           },
         },
       ]
     );
+  };
+
+  const formatElapsedTime = (seconds: number): string => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
   const formatTimeAgo = (timestamp: string) => {
@@ -56,6 +276,20 @@ export default function SafetyTrackingScreen() {
     if (diffMins < 60) return `${diffMins}m ago`;
     const diffHours = Math.floor(diffMins / 60);
     return `${diffHours}h ago`;
+  };
+
+  const getRemainingTime = (): string => {
+    if (!activeJourney) return '';
+    const remainingSeconds = (activeJourney.estimatedMinutes * 60) - elapsedTime;
+    if (remainingSeconds <= 0) return 'Overdue';
+    const mins = Math.floor(remainingSeconds / 60);
+    return `${mins} min remaining`;
+  };
+
+  const getProgressPercentage = (): number => {
+    if (!activeJourney) return 0;
+    const percentage = (elapsedTime / (activeJourney.estimatedMinutes * 60)) * 100;
+    return Math.min(percentage, 100);
   };
 
   return (
@@ -106,7 +340,7 @@ export default function SafetyTrackingScreen() {
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Estimated Arrival Time</Text>
+              <Text style={styles.inputLabel}>Estimated Time (minutes)</Text>
               <View style={styles.inputContainer}>
                 <IconSymbol
                   ios_icon_name="clock.fill"
@@ -116,12 +350,30 @@ export default function SafetyTrackingScreen() {
                 />
                 <TextInput
                   style={styles.input}
-                  placeholder="e.g., 30 minutes"
+                  placeholder="e.g., 30"
                   placeholderTextColor={colors.textSecondary}
                   value={estimatedTime}
                   onChangeText={setEstimatedTime}
+                  keyboardType="numeric"
                 />
               </View>
+            </View>
+
+            <View style={styles.contactsPreview}>
+              <Text style={styles.contactsLabel}>Trusted Contacts</Text>
+              {mockEmergencyContacts.slice(1, 4).map((contact, index) => (
+                <React.Fragment key={index}>
+                  <View style={styles.contactItem}>
+                    <IconSymbol
+                      ios_icon_name="person.fill"
+                      android_material_icon_name="person"
+                      size={16}
+                      color={colors.primary}
+                    />
+                    <Text style={styles.contactName}>{contact.name}</Text>
+                  </View>
+                </React.Fragment>
+              ))}
             </View>
 
             <TouchableOpacity style={styles.startButton} onPress={startTracking}>
@@ -135,19 +387,39 @@ export default function SafetyTrackingScreen() {
             </TouchableOpacity>
           </View>
         ) : (
-          <View style={styles.activeCard}>
+          <View style={[styles.activeCard, isDelayed && styles.activeCardDelayed]}>
             <View style={styles.activeHeader}>
-              <View style={styles.pulseContainer}>
-                <View style={styles.pulse} />
-                <View style={[styles.pulse, styles.pulseDelay]} />
+              <Animated.View style={[styles.pulseContainer, { transform: [{ scale: pulseAnim }] }]}>
+                <View style={styles.pulseOuter} />
+                <View style={styles.pulseInner} />
                 <IconSymbol
                   ios_icon_name="location.fill"
                   android_material_icon_name="my_location"
                   size={24}
                   color={colors.card}
                 />
+              </Animated.View>
+              <Text style={styles.activeTitle}>
+                {isDelayed ? 'Delay Detected!' : 'Tracking Active'}
+              </Text>
+              {isDelayed && (
+                <Text style={styles.delayedSubtitle}>Contacts have been notified</Text>
+              )}
+            </View>
+
+            <View style={styles.progressContainer}>
+              <View style={styles.progressBar}>
+                <View style={[styles.progressFill, { 
+                  width: `${getProgressPercentage()}%`,
+                  backgroundColor: isDelayed ? colors.warning : colors.card,
+                }]} />
               </View>
-              <Text style={styles.activeTitle}>Tracking Active</Text>
+              <View style={styles.timeInfo}>
+                <Text style={styles.timeLabel}>Elapsed: {formatElapsedTime(elapsedTime)}</Text>
+                <Text style={[styles.timeLabel, isDelayed && styles.timeLabelDelayed]}>
+                  {getRemainingTime()}
+                </Text>
+              </View>
             </View>
 
             <View style={styles.activeInfo}>
@@ -160,7 +432,7 @@ export default function SafetyTrackingScreen() {
                 />
                 <View style={styles.infoContent}>
                   <Text style={styles.infoLabel}>Destination</Text>
-                  <Text style={styles.infoValue}>{destination}</Text>
+                  <Text style={styles.infoValue}>{activeJourney?.destination}</Text>
                 </View>
               </View>
 
@@ -173,7 +445,9 @@ export default function SafetyTrackingScreen() {
                 />
                 <View style={styles.infoContent}>
                   <Text style={styles.infoLabel}>Expected Arrival</Text>
-                  <Text style={styles.infoValue}>{estimatedTime}</Text>
+                  <Text style={styles.infoValue}>
+                    {activeJourney?.estimatedMinutes} minutes
+                  </Text>
                 </View>
               </View>
 
@@ -186,9 +460,28 @@ export default function SafetyTrackingScreen() {
                 />
                 <View style={styles.infoContent}>
                   <Text style={styles.infoLabel}>Watching</Text>
-                  <Text style={styles.infoValue}>3 trusted contacts</Text>
+                  <Text style={styles.infoValue}>
+                    {activeJourney?.trustedContacts.length} trusted contacts
+                  </Text>
                 </View>
               </View>
+
+              {activeJourney?.currentLocation && (
+                <View style={styles.infoRow}>
+                  <IconSymbol
+                    ios_icon_name="location.circle.fill"
+                    android_material_icon_name="gps_fixed"
+                    size={20}
+                    color={colors.card}
+                  />
+                  <View style={styles.infoContent}>
+                    <Text style={styles.infoLabel}>Current Location</Text>
+                    <Text style={styles.infoValue}>
+                      {activeJourney.currentLocation.coords.latitude.toFixed(4)}, {activeJourney.currentLocation.coords.longitude.toFixed(4)}
+                    </Text>
+                  </View>
+                </View>
+              )}
             </View>
 
             <TouchableOpacity style={styles.stopButton} onPress={stopTracking}>
@@ -218,7 +511,7 @@ export default function SafetyTrackingScreen() {
             <View style={styles.featureContent}>
               <Text style={styles.featureTitle}>Real-time Location</Text>
               <Text style={styles.featureDescription}>
-                Your location is shared with trusted contacts during your journey
+                Your location is tracked and shared with trusted contacts during your journey
               </Text>
             </View>
           </View>
@@ -235,7 +528,7 @@ export default function SafetyTrackingScreen() {
             <View style={styles.featureContent}>
               <Text style={styles.featureTitle}>Delay Detection</Text>
               <Text style={styles.featureDescription}>
-                Contacts are alerted if you don&apos;t arrive within the expected time
+                Contacts are alerted if you don&apos;t arrive within 5 minutes of expected time
               </Text>
             </View>
           </View>
@@ -252,7 +545,7 @@ export default function SafetyTrackingScreen() {
             <View style={styles.featureContent}>
               <Text style={styles.featureTitle}>Safe Arrival</Text>
               <Text style={styles.featureDescription}>
-                Confirm your safe arrival to notify your contacts
+                Confirm your safe arrival to automatically notify your contacts
               </Text>
             </View>
           </View>
@@ -380,6 +673,29 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: colors.text,
   },
+  contactsPreview: {
+    backgroundColor: colors.background,
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 16,
+  },
+  contactsLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.textSecondary,
+    marginBottom: 8,
+    textTransform: 'uppercase',
+  },
+  contactItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  contactName: {
+    fontSize: 14,
+    color: colors.text,
+    marginLeft: 8,
+  },
   startButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -403,6 +719,9 @@ const styles = StyleSheet.create({
     boxShadow: '0px 4px 12px rgba(76, 175, 80, 0.3)',
     elevation: 4,
   },
+  activeCardDelayed: {
+    backgroundColor: colors.warning,
+  },
   activeHeader: {
     alignItems: 'center',
     marginBottom: 20,
@@ -415,7 +734,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 12,
   },
-  pulse: {
+  pulseOuter: {
     position: 'absolute',
     width: 60,
     height: 60,
@@ -423,16 +742,52 @@ const styles = StyleSheet.create({
     backgroundColor: colors.card,
     opacity: 0.3,
   },
-  pulseDelay: {
+  pulseInner: {
+    position: 'absolute',
     width: 80,
     height: 80,
     borderRadius: 40,
+    backgroundColor: colors.card,
     opacity: 0.2,
   },
   activeTitle: {
     fontSize: 22,
     fontWeight: '700',
     color: colors.card,
+  },
+  delayedSubtitle: {
+    fontSize: 14,
+    color: colors.card,
+    opacity: 0.9,
+    marginTop: 4,
+  },
+  progressContainer: {
+    marginBottom: 20,
+  },
+  progressBar: {
+    height: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    borderRadius: 4,
+    overflow: 'hidden',
+    marginBottom: 8,
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: colors.card,
+    borderRadius: 4,
+  },
+  timeInfo: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  timeLabel: {
+    fontSize: 12,
+    color: colors.card,
+    opacity: 0.9,
+    fontWeight: '600',
+  },
+  timeLabelDelayed: {
+    fontWeight: '700',
   },
   activeInfo: {
     marginBottom: 20,
