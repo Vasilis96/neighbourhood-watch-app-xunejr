@@ -1,9 +1,14 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, Platform, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { colors } from '@/styles/commonStyles';
 import { IconSymbol } from '@/components/IconSymbol';
+import { useGoogleAuth, simulateGoogleSignIn, GoogleUser } from '@/utils/googleAuth';
+import * as WebBrowser from 'expo-web-browser';
+
+// Required for web to work properly
+WebBrowser.maybeCompleteAuthSession();
 
 type OnboardingStep = 'welcome' | 'signup' | 'neighbourhood' | 'profile';
 
@@ -16,6 +21,44 @@ export default function WelcomeScreen() {
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [neighbourhood, setNeighbourhood] = useState('');
+  const [googleUser, setGoogleUser] = useState<GoogleUser | null>(null);
+
+  // Google Auth setup
+  const { request, response, promptAsync, redirectUri } = useGoogleAuth();
+
+  // Handle Google OAuth response
+  useEffect(() => {
+    if (response?.type === 'success') {
+      console.log('Google Auth Success:', response);
+      const { authentication } = response;
+      
+      if (authentication?.accessToken) {
+        // In a real app, you would fetch user info from Google
+        // For this prototype, we'll simulate it
+        const user = simulateGoogleSignIn();
+        setGoogleUser(user);
+        setName(user.name);
+        setEmail(user.email);
+        
+        // Skip to neighbourhood selection
+        setStep('neighbourhood');
+        
+        Alert.alert(
+          'Google Sign-In Successful',
+          `Welcome ${user.name}! Please complete your profile.`,
+          [{ text: 'Continue' }]
+        );
+      }
+    } else if (response?.type === 'error') {
+      console.error('Google Auth Error:', response.error);
+      Alert.alert(
+        'Authentication Error',
+        'Failed to sign in with Google. Please try again.'
+      );
+    } else if (response?.type === 'cancel') {
+      console.log('Google Auth Cancelled');
+    }
+  }, [response]);
 
   const handleContinue = () => {
     if (step === 'welcome') {
@@ -45,15 +88,74 @@ export default function WelcomeScreen() {
         Alert.alert('Please enter your name');
         return;
       }
+      
+      // Store user data (in a real app, this would be saved to backend/storage)
+      console.log('User signed up:', {
+        name,
+        email,
+        neighbourhood,
+        googleUser,
+      });
+      
       router.replace('/(tabs)/(home)/');
     }
   };
 
-  const handleSSOSignup = (provider: 'google' | 'apple') => {
-    console.log(`Signing up with ${provider}`);
-    Alert.alert('SSO Signup', `In a real app, this would sign you up with ${provider}`, [
-      { text: 'OK', onPress: () => router.replace('/(tabs)/(home)/') }
-    ]);
+  const handleGoogleSignIn = async () => {
+    console.log('Google Sign-In button pressed');
+    console.log('Redirect URI:', redirectUri);
+    
+    try {
+      // For prototype purposes, we'll simulate the Google sign-in
+      // In a real app with proper Google OAuth credentials, you would use:
+      // const result = await promptAsync();
+      
+      // Simulate successful sign-in for prototype
+      const user = simulateGoogleSignIn();
+      setGoogleUser(user);
+      setName(user.name);
+      setEmail(user.email);
+      
+      // Skip to neighbourhood selection
+      setStep('neighbourhood');
+      
+      Alert.alert(
+        'Google Sign-In (Simulated)',
+        `Welcome ${user.name}!\n\nNote: This is a simulated sign-in for prototype purposes. In a production app, you would need to:\n\n1. Create a Google Cloud project\n2. Enable Google OAuth\n3. Configure OAuth credentials\n4. Add authorized redirect URIs\n\nFor now, you can continue with the demo account.`,
+        [{ text: 'Continue' }]
+      );
+      
+      // Uncomment this line when you have real Google OAuth credentials:
+      // await promptAsync();
+    } catch (error) {
+      console.error('Google Sign-In Error:', error);
+      Alert.alert(
+        'Sign-In Error',
+        'An error occurred during sign-in. Please try again.'
+      );
+    }
+  };
+
+  const handleAppleSignIn = () => {
+    console.log('Apple Sign-In button pressed');
+    
+    // For prototype purposes, simulate Apple sign-in
+    const user = {
+      id: 'apple_' + Math.random().toString(36).substr(2, 9),
+      email: 'demo.user@icloud.com',
+      name: 'Demo User',
+      verified_email: true,
+    };
+    
+    setName(user.name);
+    setEmail(user.email);
+    setStep('neighbourhood');
+    
+    Alert.alert(
+      'Apple Sign-In (Simulated)',
+      `Welcome ${user.name}!\n\nNote: This is a simulated sign-in for prototype purposes. In a production app, you would use expo-apple-authentication.`,
+      [{ text: 'Continue' }]
+    );
   };
 
   return (
@@ -132,7 +234,8 @@ export default function WelcomeScreen() {
             <View style={styles.ssoButtons}>
               <TouchableOpacity
                 style={styles.ssoButton}
-                onPress={() => handleSSOSignup('google')}
+                onPress={handleGoogleSignIn}
+                disabled={!request}
               >
                 <IconSymbol
                   ios_icon_name="g.circle.fill"
@@ -140,13 +243,15 @@ export default function WelcomeScreen() {
                   size={24}
                   color={colors.text}
                 />
-                <Text style={styles.ssoButtonText}>Continue with Google</Text>
+                <Text style={styles.ssoButtonText}>
+                  {!request ? 'Loading...' : 'Continue with Google'}
+                </Text>
               </TouchableOpacity>
 
               {Platform.OS === 'ios' && (
                 <TouchableOpacity
                   style={[styles.ssoButton, styles.appleButton]}
-                  onPress={() => handleSSOSignup('apple')}
+                  onPress={handleAppleSignIn}
                 >
                   <IconSymbol
                     ios_icon_name="apple.logo"
@@ -271,6 +376,14 @@ export default function WelcomeScreen() {
               This helps us show you relevant local information
             </Text>
 
+            {googleUser && (
+              <View style={styles.userInfoCard}>
+                <Text style={styles.userInfoText}>
+                  Signed in as: {googleUser.email}
+                </Text>
+              </View>
+            )}
+
             <View style={styles.inputContainer}>
               <TextInput
                 style={styles.input}
@@ -309,6 +422,14 @@ export default function WelcomeScreen() {
             <Text style={styles.subtitle}>
               Help your neighbors get to know you
             </Text>
+
+            {googleUser && (
+              <View style={styles.userInfoCard}>
+                <Text style={styles.userInfoText}>
+                  Email: {googleUser.email}
+                </Text>
+              </View>
+            )}
 
             <View style={styles.inputContainer}>
               <TextInput
@@ -541,5 +662,19 @@ const styles = StyleSheet.create({
     color: colors.text,
     marginLeft: 12,
     flex: 1,
+  },
+  userInfoCard: {
+    width: '100%',
+    backgroundColor: colors.card,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  userInfoText: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    textAlign: 'center',
   },
 });
