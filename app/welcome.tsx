@@ -173,12 +173,11 @@ export default function WelcomeScreen() {
       {step !== 'welcome' && (
         <TouchableOpacity style={styles.backButton} onPress={handleBack}>
           <IconSymbol
-            ios_icon_name="chevron.left"
+            ios_icon_name="arrow.left"
             android_material_icon_name="arrow_back"
             size={24}
             color={colors.text}
           />
-          <Text style={styles.backButtonText}>Back</Text>
         </TouchableOpacity>
       )}
       
@@ -508,21 +507,12 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: Platform.OS === 'android' ? 48 : 60,
     left: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
     zIndex: 10,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
+    padding: 12,
     backgroundColor: colors.card,
-    borderRadius: 20,
+    borderRadius: 24,
     borderWidth: 1,
     borderColor: colors.border,
-  },
-  backButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.text,
-    marginLeft: 4,
   },
   scrollContent: {
     flexGrow: 1,
