@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, Platform, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, Platform, Alert, Image } from 'react-native';
 import { useRouter } from 'expo-router';
 import { colors } from '@/styles/commonStyles';
 import { IconSymbol } from '@/components/IconSymbol';
@@ -172,11 +172,10 @@ export default function WelcomeScreen() {
     <View style={styles.container}>
       {step !== 'welcome' && (
         <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-          <IconSymbol
-            ios_icon_name="arrow.left"
-            android_material_icon_name="arrow_back"
-            size={24}
-            color={colors.text}
+          <Image
+            source={require('@/assets/images/26acc4e8-f7a9-43c7-97f1-3bd676977537.png')}
+            style={styles.backIcon}
+            resizeMode="contain"
           />
         </TouchableOpacity>
       )}
@@ -513,6 +512,10 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     borderWidth: 1,
     borderColor: colors.border,
+  },
+  backIcon: {
+    width: 24,
+    height: 24,
   },
   scrollContent: {
     flexGrow: 1,
