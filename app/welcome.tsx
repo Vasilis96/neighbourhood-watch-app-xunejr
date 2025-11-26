@@ -564,20 +564,8 @@ export default function WelcomeScreen() {
             <View style={styles.checkboxContainer}>
               <TouchableOpacity style={styles.checkbox}>
                 <IconSymbol
-                  ios_icon_name="checkmark.square.fill"
-                  android_material_icon_name="check_box"
-                  size={24}
-                  color={colors.primary}
-                />
-                <Text style={styles.checkboxText}>
-                  Enable 2-Factor Authentication (recommended)
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity style={styles.checkbox}>
-                <IconSymbol
-                  ios_icon_name="checkmark.square.fill"
-                  android_material_icon_name="check_box"
+                  ios_icon_name="circle.fill"
+                  android_material_icon_name="radio_button_checked"
                   size={24}
                   color={colors.primary}
                 />
