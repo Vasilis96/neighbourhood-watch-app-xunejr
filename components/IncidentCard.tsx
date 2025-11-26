@@ -28,6 +28,9 @@ export function IncidentCard({ incident, onPress }: IncidentCardProps) {
     if (category === 'theft') {
       return require('@/assets/images/7bacf5e5-45f8-4dcf-aa5e-2e631be80713.png');
     }
+    if (category === 'accident') {
+      return require('@/assets/images/20d64fa0-2835-4573-aaac-0bb18890b435.png');
+    }
     return null;
   };
 

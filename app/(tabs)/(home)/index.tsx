@@ -16,7 +16,7 @@ export default function HomeScreen() {
     { id: 'all', label: 'All', icon: 'apps' },
     { id: 'theft', label: 'Theft', icon: 'shopping_bag', customImage: require('@/assets/images/7bacf5e5-45f8-4dcf-aa5e-2e631be80713.png') },
     { id: 'suspicious', label: 'Suspicious', icon: 'visibility' },
-    { id: 'accident', label: 'Accident', icon: 'car_crash' },
+    { id: 'accident', label: 'Accident', icon: 'car_crash', customImage: require('@/assets/images/20d64fa0-2835-4573-aaac-0bb18890b435.png') },
     { id: 'fire', label: 'Fire', icon: 'local_fire_department' },
     { id: 'vandalism', label: 'Vandalism', icon: 'warning' },
   ];
